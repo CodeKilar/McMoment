@@ -140,10 +140,45 @@ function extractText(result) {
   return texts.length ? texts : result;
 }
 
-function classifyIntent(text) {
-  if (/优惠券|领券|可用券|优惠/.test(text)) return "coupon";
-  if (/热量|卡路里|营养|控卡|减脂|蛋白质|健身/.test(text)) return "nutrition";
-  return "meal";
+function parseNutritionRows(data) {
+  if (typeof data !== "string") return [];
+  const match = data.match(/^\[\d+\]\{([^}]+)\}:\s*([\s\S]*)$/);
+  if (!match) return [];
+  const fields = match[1].split(",");
+  return match[2].split(/\r?\n/).map((line) => line.trim()).filter(Boolean).map((line) => {
+    const values = line.split(",");
+    return Object.fromEntries(fields.map((field, index) => {
+      const value = values[index]?.trim() ?? "";
+      return [field, value === "null" ? null : ["energyKj", "energyKcal", "protein", "fat", "carbohydrate", "sodium", "calcium"].includes(field) && value !== "" ? Number(value) : value];
+    }));
+  });
+}
+
+function buildMealCombos(products, people, calorieLimit) {
+  const drinkPattern = /可乐|雪碧|怡泉|咖啡|茶|牛奶|豆浆|果汁|饮料|柠檬|美式|拿铁|奶铁|燕麦奶|抹茶牛奶/;
+  const sidePattern = /薯条|薯饼|玉米杯|麦乐鸡|鸡翅|鸡块|派|鸡球|苹果片|沙拉|脆汁鸡|V翅/;
+  const mains = products.filter((item) => item.productName && !drinkPattern.test(item.productName) && !sidePattern.test(item.productName));
+  const sides = products.filter((item) => item.productName && sidePattern.test(item.productName));
+  const drinks = products.filter((item) => item.productName && drinkPattern.test(item.productName));
+  const combos = [];
+  for (const main of mains.slice(0, 80)) {
+    for (const side of sides.slice(0, 40)) {
+      for (const drink of drinks.slice(0, 30)) {
+        const items = [main, side, drink];
+        const energyKcal = items.reduce((sum, item) => sum + (Number(item.energyKcal) || 0), 0);
+        if (calorieLimit && energyKcal * people > calorieLimit) continue;
+        combos.push({
+          productName: `${main.productName} + ${side.productName} + ${drink.productName}`,
+          items: items.map((item) => item.productName),
+          energyKcal,
+          protein: items.reduce((sum, item) => sum + (Number(item.protein) || 0), 0),
+          totalEnergyKcal: energyKcal * people
+        });
+        if (combos.length >= 300) return combos;
+      }
+    }
+  }
+  return combos;
 }
 
 function validateArguments(tool, args) {
@@ -185,68 +220,24 @@ function parseRequest(request) {
 async function handleRecommendation(request, response, context) {
   const input = await parseRequest(request);
   const userText = String(input.text ?? "").trim();
-  const intent = classifyIntent(userText);
-  let toolName;
-  let args;
-
-  if (intent === "nutrition") {
-    toolName = "list-nutrition-foods";
-    args = {};
-  } else if (intent === "coupon") {
-    toolName = "available-coupons";
-    args = {};
-  } else if (!input.storeCode) {
-    const mode = input.fulfillment;
-    const city = String(input.city ?? "").trim();
-    if (!mode || (mode !== "delivery" && !city)) {
-      sendJson(response, 200, {
-        status: "needs_input", intent,
-        message: "普通餐品推荐需要先选择取餐方式；到店查询还需提供城市。MCP 查询要求真实门店，不能使用模拟门店。"
-      });
-      return;
-    }
-    if (mode === "delivery") {
-      const nextTool = input.addressId ? "delivery-query-stores" : "delivery-query-addresses";
-      const nextArgs = input.addressId ? { addressId: String(input.addressId), beType: 2 } : {};
-      const called = await callTool(context.token, context.sessionId, context.tools, nextTool, nextArgs);
-      writeLog({ direction: "routing", intent, userInput: redact(input), selectedTool: called.tool, arguments: called.arguments });
-      sendJson(response, 200, { status: input.addressId ? "select_store" : "select_address", intent, ...called });
-      return;
-    }
-    const beType = mode === "drive" ? 5 : 1;
-    toolName = "query-nearby-stores";
-    args = { searchType: 2, city, keyword: city, beType };
-    const called = await callTool(context.token, context.sessionId, context.tools, toolName, args);
-    writeLog({ direction: "routing", intent, userInput: redact(input), selectedTool: toolName, arguments: args });
-    sendJson(response, 200, { status: "select_store", intent, ...called });
-    return;
-  } else {
-    const mode = input.fulfillment;
-    if (!mode) {
-      sendJson(response, 200, { status: "needs_input", intent, message: "请选择到店自取、得来速或麦乐送，才能按 MCP 要求查询真实门店餐品。" });
-      return;
-    }
-    const beType = mode === "drive" ? 5 : mode === "delivery" ? 2 : 1;
-    const argsObject = {
-      storeCode: String(input.storeCode),
-      orderType: mode === "delivery" ? 2 : 1,
-      beType
-    };
-    if (beType !== 1) {
-      if (!input.beCode) {
-        sendJson(response, 200, { status: "needs_input", intent, message: "该履约方式需要门店查询返回的 beCode，请先选门店或补充对应编码。" });
-        return;
-      }
-      argsObject.beCode = String(input.beCode);
-    }
-    if (input.reservationDate) argsObject.reservationDate = String(input.reservationDate);
-    toolName = "query-meals";
-    args = argsObject;
-  }
-
+  const intent = "meal_recommendation";
+  const toolName = "list-nutrition-foods";
+  const args = {};
+  const people = Math.max(1, Number.parseInt(String(input.people ?? "1"), 10) || 1);
+  const budget = Number(input.budget) > 0 ? Number(input.budget) : null;
+  const calorieLimit = Number(input.calories) > 0 ? Number(input.calories) : null;
   const called = await callTool(context.token, context.sessionId, context.tools, toolName, args);
+  const products = parseNutritionRows(called.result?.data);
+  const recommendations = buildMealCombos(products, people, calorieLimit);
   writeLog({ direction: "routing", intent, userInput: redact(input), selectedTool: toolName, arguments: args });
-  sendJson(response, 200, { status: "completed", intent, ...called });
+  sendJson(response, 200, {
+    status: "completed", intent, tool: called.tool, arguments: called.arguments,
+    filters: { people, budget, calorieLimit },
+    budgetNote: budget ? "MCP 当前营养数据不包含价格，无法验证预算；未将餐品标记为预算内。" : undefined,
+    recommendationNote: "套餐由 MCP 营养数据中的主食、小食和饮品组合而成，非真实订单。",
+    recommendations,
+    result: called.result
+  });
 }
 
 async function main() {
@@ -268,6 +259,25 @@ async function main() {
   const server = http.createServer(async (request, response) => {
     try {
       const pathname = new URL(request.url, "http://localhost").pathname;
+      if (pathname === "/api/recommend") {
+        const origin = request.headers.origin;
+        const allowedOrigins = new Set(["null", `http://127.0.0.1:${port}`, `http://localhost:${port}`]);
+        if (origin && !allowedOrigins.has(origin)) {
+          sendJson(response, 403, { error: "Origin not allowed" });
+          return;
+        }
+        if (origin) {
+          response.setHeader("Access-Control-Allow-Origin", origin);
+          response.setHeader("Vary", "Origin");
+          response.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+          response.setHeader("Access-Control-Allow-Headers", "Content-Type");
+        }
+        if (request.method === "OPTIONS") {
+          response.writeHead(204);
+          response.end();
+          return;
+        }
+      }
       if (request.method === "POST" && pathname === "/api/recommend") {
         await handleRecommendation(request, response, context);
         return;
@@ -281,7 +291,7 @@ async function main() {
       if (!target.startsWith(`${WEB_ROOT}${path.sep}`) || !fs.existsSync(target) || !fs.statSync(target).isFile()) {
         response.writeHead(404); response.end("Not found"); return;
       }
-      const contentTypes = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8" };
+      const contentTypes = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".png": "image/png" };
       response.writeHead(200, { "Content-Type": contentTypes[path.extname(target)] ?? "application/octet-stream" });
       if (request.method === "HEAD") response.end(); else fs.createReadStream(target).pipe(response);
     } catch (error) {

@@ -1,181 +1,482 @@
-# McMoment 订单 DNA：24 个 MVP 部件生图提示词
+# McMoment 餐品部件生图提示词
 
-本清单对应 24 个独立资源：6 个身体、6 个装备、5 个动力核心、4 个伙伴、3 个动作。每条提示词单独生成一张素材，不生成拼图。目标是让部件可拆分、可叠加、可自由组合；标有“品牌锚点”的仅做局部弱提示，建议同时保留无品牌版本。
+本版映射：主餐 → 身体骨架；小食 → 四肢；饮料 → 头部；甜品 → 装饰。共 6 + 6 + 5 + 4 = 21 套餐品风格，取消三个履约动作资源。默认堂食，完成动作由程序控制独立图层。
 
-## 通用风格前缀
+## 使用方法与交付数量
 
-将此前缀与每条具体提示词拼接使用：
+主餐只画胸腹腰胯，不含头和四肢；饮料头部包含脸。每套小食必须逐次生成四张独立部件：arm_left、arm_right、leg_left、leg_right。一张四肢拼图不能直接用于挥手或跳跃。
 
-```text
-Create one standalone modular asset for McMoment order-DNA character composition. Unified polished 2.5D game-art style, friendly premium collectible design, clean readable silhouette, restrained material detail, soft studio lighting, crisp edges. Draw only the specified single asset, front or slight three-quarter view, centered with generous transparent padding for cropping and anchor adjustment. Output one 1024x1024 transparent PNG with clean alpha. No ground shadow, scene, background, frame, text, labels, watermark, contact sheet, or extra objects. Keep attachment edges and mounting area clear so the asset can be freely layered with unrelated bodies, equipment, energy cores, companions, and motion poses. Include a McDonald's visual anchor only when explicitly requested in the asset prompt; make it a small non-text accent, never the sole identifying feature.
-```
+餐品资源合计 39 张 PNG（6 身体 + 24 四肢 + 5 头 + 4 装饰），再加文末 6 张中性资源，总计 45 张。多份主餐会复用这些资源随机组合成小队，不需要为每个最终角色重新生图。
 
-通用负面约束：
+以下代码块仅包含各资源的专属描述与槽位要求，不重复通用规则。每次生成时，将本节“统一生成规则”和对应代码块一起提交；六套小食四肢和中性四肢均已逐张展开，无需自行替换或拼接，代码块上方标注建议保存路径。
 
-```text
-photorealism, busy background, full character poster, multiple views, multiple assets, readable text, numbers, fake logos, incorrect lettering, excessive tiny details, hard cast shadow, strong lens flare, cropped silhouette, fused edges, unclear mounting area, baked-in body parts, baked-in unrelated equipment
-```
+AI 输出不能保证精确挂点。先用中性资源试拼，统一裁切、缩放到以下画布坐标；将通过验收的同一 rig 参考图用于后续生成。画布位置是交付标准，不能只写进提示词就跳过后处理。
 
-## 身体部件（6）
+### 统一生成规则（每次生成均与单个资源提示词一起提交）
 
-### 1. `body_grilled_rider`｜板烧鸡腿堡骑手
+~~~text
+Create one standalone modular sprite for McMoment characters in a consistent friendly premium collectible-toy 2.5D style. Strict front-facing orthographic view, soft upper-left studio light, crisp readable silhouette, restrained detail. Output one 1024x1024 transparent PNG, sRGB, clean alpha, at least 32px edge padding. Keep the resource prompt's scale and placement; leave the rest transparent. No background, floor/cast shadow, scenery, text, labels, logos, watermark, contact sheet, multiple views, extra objects, particles, baked-in glow or visible anchor dots. Draw only requested parts.
+Negative: assembled character, food photography, beverage cup, weapon, shield, backpack, companion creature, duplicate/merged parts, perspective rotation, cropped edges, mounting labels, opaque background, lettering.
+~~~
+## 四肢槽位参考（已写入每段提示词）
 
-```text
-A compact agile rider body inspired by a grilled chicken burger: toasted deep-golden shoulder armor with subtle grill marks, simple chest armor, lightweight legs, slightly forward-leaning courier stance. Do not draw a burger, helmet, handheld items, cape, or background. Optional McDonald's anchor: a tiny abstract golden-arches emboss on the chest, no letters and no complete logo. Keep head, both hands, back, feet, chest-core, and companion attachment areas clearly open.
-```
+“左/右”均以角色自身为准，正面角色左侧在画面右侧。四肢各为一张完整刚性部件，手与手臂合一，脚与腿合一；肩或髋为旋转中心。每套四肢必须先保持同一材质、同一色块、同一长度和同一正面姿态，再只做左右镜像；左右手不能变成不同手型，左右腿不能变成不同鞋型或侧面视角。
 
-### 2. `body_bigmac_captain`｜巨无霸队长
+| 文件名 | 已包含在对应提示词中的槽位说明 |
+|---|---|
+| arm_left.png | Draw only the character-left arm including its hand, on the image-right side. Shoulder pivot (.66,.42), hand near (.75,.63), envelope x=.64-.81, y=.40-.66. Relaxed downward angle, neutral mitten hand, no upper torso. |
+| arm_right.png | Draw only the character-right arm including its hand, on the image-left side. Shoulder pivot (.34,.42), hand near (.25,.63), envelope x=.19-.36, y=.40-.66. Relaxed downward angle, neutral mitten hand, no upper torso. |
+| leg_left.png | Draw only the character-left leg including its foot, on the image-right side. Hip pivot (.59,.64), sole near y=.91, envelope x=.53-.68, y=.62-.92. Front-facing stable standing leg, no pelvis. |
+| leg_right.png | Draw only the character-right leg including its foot, on the image-left side. Hip pivot (.41,.64), sole near y=.91, envelope x=.32-.47, y=.62-.92. Front-facing stable standing leg, no pelvis. |
 
-```text
-A broad, sturdy but friendly captain body inspired by a double-layer burger: layered rounded shoulder armor and stacked chest plates, warm toasted gold and dark brown bands with a restrained lettuce-green accent, balanced confident stance. No burger, cape, weapon, helmet, or background. Optional McDonald's anchor: a tiny red-and-yellow double stripe on one shoulder badge, no lettering. Leave chest-core and all standard body anchors unobstructed.
-```
+连接根部保留 12–20 px 遮挡余量，接口圆滑，禁止画入躯干。最终 PNG 均保持 1024 × 1024；不裁成不同画布尺寸直接叠图。
 
-### 3. `body_mcchicken_scout`｜麦香鸡探索者
+## 一、主餐：6 个身体骨架
 
-```text
-A light scout body inspired by a crispy chicken sandwich: golden feather-like shoulder shapes, cream-and-gold armor, a small leaf-green accent, nimble legs and a curious side-facing stance. No chicken, food prop, weapon, backpack, helmet, or background. Optional McDonald's anchor: a tiny abstract red-and-gold curved waist buckle, no letters or logo. Keep hands and back attachment points clear.
-```
+### 1. body_grilled_rider｜板烧身体骨架
 
-### 4. `body_spicy_flare`｜辣味热焰身体
+~~~text
+A compact toasted brown and gold torso shell with subtle parallel grill-line engraving and a light riding-jacket silhouette. Draw only a headless and limbless chest-abdomen-pelvis frame. No face, neck above the socket, arms, hands, legs, feet or decorations. Body envelope x=.32-.68, y=.34-.66. Neck socket at (.50,.34), character-left shoulder at (.66,.42), character-right shoulder at (.34,.42), character-left hip at (.59,.64), character-right hip at (.41,.64). Small joint-cover lips may overlap connections; do not extend them into limbs. Match all front-v1 sockets.
 
-```text
-A streamlined short-dash body inspired by spicy chicken: red-orange armor panels, restrained heat-wave motifs, compact shoulders and springy legs; energetic rather than aggressive. No food, weapon, flame background, particles, or scenery. Optional McDonald's anchor: one small red-and-gold armor panel at the waist, no text or logo. Keep hands, back, and chest-core attachment points distinct.
-```
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
 
-### 5. `body_nugget_swarm`｜麦乐鸡模块化身体
+### 2. body_bigmac_captain｜巨无霸身体骨架
 
-```text
-One readable modular character body inspired by golden nuggets: a central torso with a few rounded detachable-looking armor modules, clear gaps between modules, friendly and dependable, in toasted gold and cream with a tiny red accent. It must still read as one body, not a group of characters. No food pieces, drone, weapon, or background. Optional McDonald's anchor: tiny abstract golden-arches emboss on the chest, no text or complete logo. Preserve standard head, hand, back, and foot anchors.
-```
+~~~text
+A broad layered gold and cream torso shell with three stacked armor bands, restrained leaf-green seams and a sturdy waist. Draw only a headless and limbless chest-abdomen-pelvis frame. No face, neck above the socket, arms, hands, legs, feet or decorations. Body envelope x=.32-.68, y=.34-.66. Neck socket at (.50,.34), character-left shoulder at (.66,.42), character-right shoulder at (.34,.42), character-left hip at (.59,.64), character-right hip at (.41,.64). Small joint-cover lips may overlap connections; do not extend them into limbs. Match all front-v1 sockets.
 
-### 6. `body_breakfast_sunrise`｜早餐日出身体
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
 
-```text
-A warm breakfast-commuter body with soft rounded armor, cream and pale gold surfaces, a restrained sunrise-orange edge, relaxed upright posture with a hint of morning stretch. No sun background, food, cup, backpack, weapon, or scene. Optional McDonald's anchor: a tiny red-and-gold curved stitch on one shoulder, no lettering. Leave chest-core, hand, and back anchors open.
-```
+### 3. body_mcchicken_scout｜麦香鸡身体骨架
 
-## 小食装备（6）
+~~~text
+A lightweight pale-gold torso shell with soft crispy-surface detailing and one leaf-green waist seam. Draw only a headless and limbless chest-abdomen-pelvis frame. No face, neck above the socket, arms, hands, legs, feet or decorations. Body envelope x=.32-.68, y=.34-.66. Neck socket at (.50,.34), character-left shoulder at (.66,.42), character-right shoulder at (.34,.42), character-left hip at (.59,.64), character-right hip at (.41,.64). Small joint-cover lips may overlap connections; do not extend them into limbs. Match all front-v1 sockets.
 
-### 7. `equip_fries_blade`｜薯条光刃
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
 
-```text
-One compact right-hand weapon: several straight golden fries aligned into a clean short energy blade, with a simple separate grip and a restrained warm-gold edge glow. No hand, body, fries carton, flying crumbs, or background. Optional McDonald's anchor: a tiny red paper sleeve with a narrow gold trim around the grip, no text or logo. Keep the silhouette clear and compact for free mixing with a shield or backpack.
-```
+### 4. body_spicy_flare｜麦辣身体骨架
 
-### 8. `equip_corn_shield`｜玉米圆盾
+~~~text
+A streamlined red-orange torso shell with restrained heat-wave engraving and a compact waist. Draw only a headless and limbless chest-abdomen-pelvis frame. No face, neck above the socket, arms, hands, legs, feet or decorations. Body envelope x=.32-.68, y=.34-.66. Neck socket at (.50,.34), character-left shoulder at (.66,.42), character-right shoulder at (.34,.42), character-left hip at (.59,.64), character-right hip at (.41,.64). Small joint-cover lips may overlap connections; do not extend them into limbs. Match all front-v1 sockets.
 
-```text
-One left-hand shield with a rounded silhouette, a neat corn-kernel pattern in a pale-gold rim, subtly translucent protective face, and a clearly visible rear grip. No hand, body, corn cup, particles, or background. Optional McDonald's anchor: a tiny red curved inlay on the rim, no lettering. Keep the outline separate from the hand mount and compatible with a back item.
-```
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
 
-### 9. `equip_spicy_wing_boomerang`｜麦辣鸡翅回旋镖
+### 5. body_nugget_swarm｜麦乐鸡身体骨架
 
-```text
-One right-hand boomerang shaped with an abstract paired-wing curve, warm red-orange body, restrained golden heat etching, rounded safe edges and an obvious grip point. No realistic meat, hand, character, trail, flame scene, or text. Optional McDonald's anchor: a tiny gold rivet with a small red accent at the center, no logo. Transparent clearance around the full silhouette.
-```
+~~~text
+One torso shell made of connected rounded toasted-gold armor panels. A single torso, never separate creatures or floating pieces. Draw only a headless and limbless chest-abdomen-pelvis frame. No face, neck above the socket, arms, hands, legs, feet or decorations. Body envelope x=.32-.68, y=.34-.66. Neck socket at (.50,.34), character-left shoulder at (.66,.42), character-right shoulder at (.34,.42), character-left hip at (.59,.64), character-right hip at (.41,.64). Small joint-cover lips may overlap connections; do not extend them into limbs. Match all front-v1 sockets.
 
-### 10. `equip_nugget_drone_pack`｜麦乐鸡无人机背包
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
 
-```text
-One compact back-mounted scout pack in rounded golden modules, with two small foldable rotors and a simple side scanning lens; helpful supply drone, not a weapon. No character, hands, food, flight trail, background, or text. Optional McDonald's anchor: one tiny red-and-yellow geometric patch, no letters or logo. Flat back mounting surface, compact shoulder-width silhouette, clear edges.
-```
+### 6. body_breakfast_sunrise｜早餐身体骨架
 
-### 11. `equip_apple_compass`｜苹果罗盘
+~~~text
+A rounded cream-and-gold torso shell with a subtle sunrise engraving and warm toasted trim. Draw only a headless and limbless chest-abdomen-pelvis frame. No face, neck above the socket, arms, hands, legs, feet or decorations. Body envelope x=.32-.68, y=.34-.66. Neck socket at (.50,.34), character-left shoulder at (.66,.42), character-right shoulder at (.34,.42), character-left hip at (.59,.64), character-right hip at (.41,.64). Small joint-cover lips may overlap connections; do not extend them into limbs. Match all front-v1 sockets.
 
-```text
-One lightweight left-hand fantasy compass: translucent apple-green circular face, clean gold needle, tiny leaf finial, crisp readable center. No hand, character, packaging, map, text, trail, or background. No brand anchor; keep the natural green palette so it mixes well with red and gold assets. Complete outer contour and a clear hand grip.
-```
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
 
-### 12. `equip_salad_field_pack`｜沙拉野外补给包
+## 二、小食：6 套四肢，24 段独立提示词
 
-```text
-One lightweight back-mounted field pack built from a few large leaf-shaped armor panels and rounded pockets, fresh green, cream and small gold buckles; clean broad shapes, not busy. No character, hand, food bowl, utensils, text, or background. Optional McDonald's anchor: one tiny abstract red-and-gold round patch with no lettering or complete logo. Flat rear mount, moderate width, clear outline.
-```
+### 7. limb_fries｜薯条四肢
 
-## 饮料动力核心（5）
+#### limb_fries/arm_left.png｜左臂
 
-### 13. `energy_zero_bubble_core`｜零度可乐气泡核心
+~~~text
+Golden longitudinal ridges, red joint cuffs, smooth toy-like geometry. Draw only one limb specified below, including its joint connector, never the other three limbs. No head, torso or ornament. Keep a 12-20px overlap tab at its attachment root. Match the opposite limb in material, colors, length, thickness, cuff and hand/foot shape; only mirror its lateral contour. No different glove, pose, shoe, side view or perspective.
 
-```text
-One chest-sized circular propulsion core in black and silver, with a clear cool-white energy pearl, a few crisp bubbles and concentric pulse etching. Not a bottle or can. No body, particle trail, background, text, or label. Optional McDonald's anchor: tiny red arc accents among silver geometric facets, no Coke lettering or complete logo. Front-facing, clean outer clearance, usable on chest-core or back.
-```
+Character-left arm (image-right): shoulder pivot (.66,.42), hand (.75,.63), envelope x=.64-.81, y=.40-.66; relaxed downward angle, neutral mitten. No torso.
 
-### 14. `energy_cola_spark_core`｜可口可乐星火核心
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
 
-```text
-One compact circular red-and-black energy turbine, bright red center, dark metallic outer ring and restrained white highlights, stable and readable as a chest core. No bottle, can, liquid splash, character, background, text, or label. Optional McDonald's anchor: a small white ribbon-like curve inset on the red shell, not forming a recognizable logo and containing no words. Match the scale and material quality of the other cores.
-```
+#### limb_fries/arm_right.png｜右臂
 
-### 15. `energy_sprite_mist_core`｜雪碧清雾核心
+~~~text
+Golden longitudinal ridges, red joint cuffs, smooth toy-like geometry. Draw only one limb specified below, including its joint connector, never the other three limbs. No head, torso or ornament. Keep a 12-20px overlap tab at its attachment root. Match the opposite limb in material, colors, length, thickness, cuff and hand/foot shape; only mirror its lateral contour. No different glove, pose, shoe, side view or perspective.
 
-```text
-One chest-sized aqua-green and clear-white teardrop turbine, bright center and a compact curling mist ring, with only a few attached water-drop insets. No bottle, character, background, text, label, or extended particle effect. Optional McDonald's anchor: tiny red and gold line accents on the rim, subtle against the green, no logo. Clean front-facing silhouette, independently layerable.
-```
+Character-right arm (image-left): shoulder pivot (.34,.42), hand (.25,.63), envelope x=.19-.36, y=.40-.66; relaxed downward angle, neutral mitten. No torso.
 
-### 16. `energy_orange_sun_core`｜橙汁太阳核心
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
 
-```text
-One rounded orange-gold sun reactor with a bright amber center, short orderly radial fins and translucent warm material; reads as a friendly power source, not fruit or a drink. No background halo, character, cup, text, or label. Optional McDonald's anchor: a small red-and-gold double ring at the base, abstract with no logo. Soft edges, clearly separated inner and outer layers.
-```
+#### limb_fries/leg_left.png｜左腿
 
-### 17. `energy_coffee_clock_core`｜咖啡时钟核心
+~~~text
+Golden longitudinal ridges, red joint cuffs, smooth toy-like geometry. Draw only one limb specified below, including its joint connector, never the other three limbs. No head, torso or ornament. Keep a 12-20px overlap tab at its attachment root. Match paired leg in material, color, length, thickness and shoe; mirror only its side contour.
 
-```text
-One brown-and-gold mechanical clock core with a round dial, simple marks but no numerals or text, a slow central hand and an amber energy window; stable long-duration power. No coffee cup, bean pile, character, background, or readable marks. Optional McDonald's anchor: a tiny red fastener and gold arc on the outer ring, no logo. Front-facing and the same visual scale as the other energy cores.
-```
+Character-left leg (image-right): hip pivot (.59,.64), sole y=.91, envelope x=.53-.68, y=.62-.92; front-facing stable stance. No pelvis.
 
-## 甜品伙伴（4）
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
 
-### 18. `companion_mcflurry_orbit`｜麦旋风环绕伙伴
+#### limb_fries/leg_right.png｜右腿
 
-```text
-One small floating soft-serve swirl sprite: friendly cream-white spiral, a few restrained chocolate or colorful inclusions, simple kind face, and one separate elliptical orbit ring. No cup, spoon, character, background, or text. Optional McDonald's anchor: a tiny red-and-gold rim accent beneath the sprite, no packaging text or logo. Keep sprite and ring distinct for orbit animation.
-```
+~~~text
+Golden longitudinal ridges, red joint cuffs, smooth toy-like geometry. Draw only one limb specified below, including its joint connector, never the other three limbs. No head, torso or ornament. Keep a 12-20px overlap tab at its attachment root. Match paired leg in material, color, length, thickness and shoe; mirror only its side contour.
 
-### 19. `companion_pie_comet`｜派彗星伙伴
+Character-right leg (image-left): hip pivot (.41,.64), sole y=.91, envelope x=.32-.47, y=.62-.92; front-facing stable stance. No pelvis.
 
-```text
-One small rounded golden-brown pie transformed into a friendly comet sprite, crisp simple lattice top and a short warm tail attached to the silhouette. No plate, character, background, text, or extra pies. Optional McDonald's anchor: a tiny red-and-gold abstract baked-seal detail, no letters or logo. Centered with clear padding for a companion anchor.
-```
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
 
-### 20. `companion_sundae_lantern`｜圣代灯笼伙伴
+### 8. limb_corn｜玉米四肢
 
-```text
-One floating sundae-inspired lantern sprite: abstract rounded cup body, cream swirl top, soft amber light contained within the body, and a small top loop. No table, scene, character, background, or text. Optional McDonald's anchor: a tiny red curve and gold clasp at the lower rim, no writing or complete logo. Crisp complete silhouette, suitable for back or companion mounting.
-```
+#### limb_corn/arm_left.png｜左臂
 
-### 21. `companion_icecream_sprite`｜冰淇淋漂浮精灵
+~~~text
+Cream-yellow rounded armor, a few integrated corn-kernel surface motifs, soft green cuffs. Draw only one limb specified below, including its joint connector, never the other three limbs. No head, torso or ornament. Keep a 12-20px overlap tab at its attachment root. Match the opposite limb in material, colors, length, thickness, cuff and hand/foot shape; only mirror its lateral contour. No different glove, pose, shoe, side view or perspective.
 
-```text
-One small floating ice-cream sprite with cream-white swirl, tiny pale-pink and mint accents, rounded body and a simple friendly expression; charming game companion, not overly childish. No cone packaging, character, background, text, or duplicate sprites. Optional McDonald's anchor: tiny abstract golden double-arc emboss on one side, not a complete logo and no words. Clear contour for bobbing animation.
-```
+Character-left arm (image-right): shoulder pivot (.66,.42), hand (.75,.63), envelope x=.64-.81, y=.40-.66; relaxed downward angle, neutral mitten. No torso.
 
-## 履约动作（3）
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
 
-### 22. `motion_delivery_dash`｜麦乐送冲刺
+#### limb_corn/arm_right.png｜右臂
 
-```text
-One reusable neutral character pose asset: compact forward-leaning delivery dash skeleton, arms in a natural riding grip, legs in a clear alternating stride, a few short detached speed marks behind the feet. Do not define a specific food-themed body, vehicle, equipment, or background. Optional McDonald's anchor: a tiny red-and-gold reflective stripe on a generic backpack silhouette, no text or logo. Transparent background, stable pose anchor, leave chest-core visible.
-```
+~~~text
+Cream-yellow rounded armor, a few integrated corn-kernel surface motifs, soft green cuffs. Draw only one limb specified below, including its joint connector, never the other three limbs. No head, torso or ornament. Keep a 12-20px overlap tab at its attachment root. Match the opposite limb in material, colors, length, thickness, cuff and hand/foot shape; only mirror its lateral contour. No different glove, pose, shoe, side view or perspective.
 
-### 23. `motion_pickup_walk`｜到店取餐步行
+Character-right arm (image-left): shoulder pivot (.34,.42), hand (.25,.63), envelope x=.19-.36, y=.40-.66; relaxed downward angle, neutral mitten. No torso.
 
-```text
-One reusable neutral character walking pose: upright light stride, one foot forward, one foot pushing back, relaxed anticipatory posture, one hand lifted and available for attaching a snack item. No specific food body, paper bag, equipment, storefront, or background. No brand anchor on the pose itself; leave an optional waist location for a separate red-and-gold accent. Transparent background, clear head, hand, back and foot anchors.
-```
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
 
-### 24. `motion_dine_tray`｜堂食托盘
+#### limb_corn/leg_left.png｜左腿
 
-```text
-One reusable neutral dine-in pose: relaxed balanced standing or slight seated stance, both arms holding a level empty tray; tray must remain empty so order items can be composited freely. No specific body, food, chair, table, restaurant, or background. Optional McDonald's anchor: an extremely thin red-and-gold rim accent on the tray only, no arches, text, or complete logo. Transparent background, clean separation between tray, hands, and torso.
-```
+~~~text
+Cream-yellow rounded armor, a few integrated corn-kernel surface motifs, soft green cuffs. Draw only one limb specified below, including its joint connector, never the other three limbs. No head, torso or ornament. Keep a 12-20px overlap tab at its attachment root. Match the opposite limb in material, colors, length, thickness, cuff and hand/foot shape; only mirror its lateral contour. No different glove, pose, shoe, side view or perspective.
 
-## 自由组合与验收
+Character-left leg (image-right): hip pivot (.59,.64), sole y=.91, envelope x=.53-.68, y=.62-.92; front-facing stable stance. No pelvis.
 
-- 每条提示词单独生成；将通用风格前缀和负面约束拼接到提示词前后，不要一次生成 24 格拼图。
-- 身体、装备、动力、伙伴和动作分别保存为独立图层，不把其他部件、挂点标记或投影烘焙进图像。
-- 提示词中的“品牌锚点”均为可选。建议为标注项同时生成无锚点版本；至少一半资源保持无品牌细节，避免品牌元素妨碍混搭。
-- 若生成器不支持透明背景，可先生成纯色底，再执行抠图并检查 alpha 边缘；不要把纯色底当作最终资产。
-- 检查单件轮廓、透明边缘、安装区域和实际叠图效果；随机抽取不同身体与装备互换，确认颜色、比例和轮廓不会黏连或冲突。
-- 文档第 10.5 节动作映射列有 4 种履约动作，但第 14 节 MVP 交付清单限定 3 个动作。本提示词按交付清单采用麦乐送、到店取餐、堂食；得来速可作为后续扩展资源。
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
 
+#### limb_corn/leg_right.png｜右腿
+
+~~~text
+Cream-yellow rounded armor, a few integrated corn-kernel surface motifs, soft green cuffs. Draw only one limb specified below, including its joint connector, never the other three limbs. No head, torso or ornament. Keep a 12-20px overlap tab at its attachment root. Match the opposite limb in material, colors, length, thickness, cuff and hand/foot shape; only mirror its lateral contour. No different glove, pose, shoe, side view or perspective.
+
+Character-right leg (image-left): hip pivot (.41,.64), sole y=.91, envelope x=.32-.47, y=.62-.92; front-facing stable stance. No pelvis.
+
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
+
+### 9. limb_spicy_wing｜麦辣鸡翅四肢
+
+#### limb_spicy_wing/arm_left.png｜左臂
+
+~~~text
+Red-orange angular armor, restrained toasted accents, a standard humanoid limb silhouette, never an actual wing. Draw only one limb specified below, including its joint connector, never the other three limbs. No head, torso or ornament. Keep a 12-20px overlap tab at its attachment root. Match the opposite limb in material, colors, length, thickness, cuff and hand/foot shape; only mirror its lateral contour. No different glove, pose, shoe, side view or perspective.
+
+Character-left arm (image-right): shoulder pivot (.66,.42), hand (.75,.63), envelope x=.64-.81, y=.40-.66; relaxed downward angle, neutral mitten. No torso.
+
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
+
+#### limb_spicy_wing/arm_right.png｜右臂
+
+~~~text
+Red-orange angular armor, restrained toasted accents, a standard humanoid limb silhouette, never an actual wing. Draw only one limb specified below, including its joint connector, never the other three limbs. No head, torso or ornament. Keep a 12-20px overlap tab at its attachment root. Match the opposite limb in material, colors, length, thickness, cuff and hand/foot shape; only mirror its lateral contour. No different glove, pose, shoe, side view or perspective.
+
+Character-right arm (image-left): shoulder pivot (.34,.42), hand (.25,.63), envelope x=.19-.36, y=.40-.66; relaxed downward angle, neutral mitten. No torso.
+
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
+
+#### limb_spicy_wing/leg_left.png｜左腿
+
+~~~text
+Red-orange angular armor, restrained toasted accents, a standard humanoid limb silhouette, never an actual wing. Draw only one limb specified below, including its joint connector, never the other three limbs. No head, torso or ornament. Keep a 12-20px overlap tab at its attachment root. Match the opposite limb in material, colors, length, thickness, cuff and hand/foot shape; only mirror its lateral contour. No different glove, pose, shoe, side view or perspective.
+
+Character-left leg (image-right): hip pivot (.59,.64), sole y=.91, envelope x=.53-.68, y=.62-.92; front-facing stable stance. No pelvis.
+
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
+
+#### limb_spicy_wing/leg_right.png｜右腿
+
+~~~text
+Red-orange angular armor, restrained toasted accents, a standard humanoid limb silhouette, never an actual wing. Draw only one limb specified below, including its joint connector, never the other three limbs. No head, torso or ornament. Keep a 12-20px overlap tab at its attachment root. Match the opposite limb in material, colors, length, thickness, cuff and hand/foot shape; only mirror its lateral contour. No different glove, pose, shoe, side view or perspective.
+
+Character-right leg (image-left): hip pivot (.41,.64), sole y=.91, envelope x=.32-.47, y=.62-.92; front-facing stable stance. No pelvis.
+
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
+
+### 10. limb_nugget｜麦乐鸡四肢
+
+#### limb_nugget/arm_left.png｜左臂
+
+~~~text
+Toasted-gold rounded block armor, cream joints, soft chunky geometry. Draw only one limb specified below, including its joint connector, never the other three limbs. No head, torso or ornament. Keep a 12-20px overlap tab at its attachment root. Match the opposite limb in material, colors, length, thickness, cuff and hand/foot shape; only mirror its lateral contour. No different glove, pose, shoe, side view or perspective.
+
+Character-left arm (image-right): shoulder pivot (.66,.42), hand (.75,.63), envelope x=.64-.81, y=.40-.66; relaxed downward angle, neutral mitten. No torso.
+
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
+
+#### limb_nugget/arm_right.png｜右臂
+
+~~~text
+Toasted-gold rounded block armor, cream joints, soft chunky geometry. Draw only one limb specified below, including its joint connector, never the other three limbs. No head, torso or ornament. Keep a 12-20px overlap tab at its attachment root. Match the opposite limb in material, colors, length, thickness, cuff and hand/foot shape; only mirror its lateral contour. No different glove, pose, shoe, side view or perspective.
+
+Character-right arm (image-left): shoulder pivot (.34,.42), hand (.25,.63), envelope x=.19-.36, y=.40-.66; relaxed downward angle, neutral mitten. No torso.
+
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
+
+#### limb_nugget/leg_left.png｜左腿
+
+~~~text
+Toasted-gold rounded block armor, cream joints, soft chunky geometry. Draw only one limb specified below, including its joint connector, never the other three limbs. No head, torso or ornament. Keep a 12-20px overlap tab at its attachment root. Match the opposite limb in material, colors, length, thickness, cuff and hand/foot shape; only mirror its lateral contour. No different glove, pose, shoe, side view or perspective.
+
+Character-left leg (image-right): hip pivot (.59,.64), sole y=.91, envelope x=.53-.68, y=.62-.92; front-facing stable stance. No pelvis.
+
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
+
+#### limb_nugget/leg_right.png｜右腿
+
+~~~text
+Toasted-gold rounded block armor, cream joints, soft chunky geometry. Draw only one limb specified below, including its joint connector, never the other three limbs. No head, torso or ornament. Keep a 12-20px overlap tab at its attachment root. Match the opposite limb in material, colors, length, thickness, cuff and hand/foot shape; only mirror its lateral contour. No different glove, pose, shoe, side view or perspective.
+
+Character-right leg (image-left): hip pivot (.41,.64), sole y=.91, envelope x=.32-.47, y=.62-.92; front-facing stable stance. No pelvis.
+
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
+
+### 11. limb_apple｜苹果片四肢
+
+#### limb_apple/arm_left.png｜左臂
+
+~~~text
+Pale-green curved armor, thin apple-red edge trim, clean smooth surfaces. Draw only one limb specified below, including its joint connector, never the other three limbs. No head, torso or ornament. Keep a 12-20px overlap tab at its attachment root. Match the opposite limb in material, colors, length, thickness, cuff and hand/foot shape; only mirror its lateral contour. No different glove, pose, shoe, side view or perspective.
+
+Character-left arm (image-right): shoulder pivot (.66,.42), hand (.75,.63), envelope x=.64-.81, y=.40-.66; relaxed downward angle, neutral mitten. No torso.
+
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
+
+#### limb_apple/arm_right.png｜右臂
+
+~~~text
+Pale-green curved armor, thin apple-red edge trim, clean smooth surfaces. Draw only one limb specified below, including its joint connector, never the other three limbs. No head, torso or ornament. Keep a 12-20px overlap tab at its attachment root. Match the opposite limb in material, colors, length, thickness, cuff and hand/foot shape; only mirror its lateral contour. No different glove, pose, shoe, side view or perspective.
+
+Character-right arm (image-left): shoulder pivot (.34,.42), hand (.25,.63), envelope x=.19-.36, y=.40-.66; relaxed downward angle, neutral mitten. No torso.
+
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
+
+#### limb_apple/leg_left.png｜左腿
+
+~~~text
+Pale-green curved armor, thin apple-red edge trim, clean smooth surfaces. Draw only one limb specified below, including its joint connector, never the other three limbs. No head, torso or ornament. Keep a 12-20px overlap tab at its attachment root. Match the opposite limb in material, colors, length, thickness, cuff and hand/foot shape; only mirror its lateral contour. No different glove, pose, shoe, side view or perspective.
+
+Character-left leg (image-right): hip pivot (.59,.64), sole y=.91, envelope x=.53-.68, y=.62-.92; front-facing stable stance. No pelvis.
+
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
+
+#### limb_apple/leg_right.png｜右腿
+
+~~~text
+Pale-green curved armor, thin apple-red edge trim, clean smooth surfaces. Draw only one limb specified below, including its joint connector, never the other three limbs. No head, torso or ornament. Keep a 12-20px overlap tab at its attachment root. Match the opposite limb in material, colors, length, thickness, cuff and hand/foot shape; only mirror its lateral contour. No different glove, pose, shoe, side view or perspective.
+
+Character-right leg (image-left): hip pivot (.41,.64), sole y=.91, envelope x=.32-.47, y=.62-.92; front-facing stable stance. No pelvis.
+
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
+
+### 12. limb_salad｜沙拉四肢
+
+#### limb_salad/arm_left.png｜左臂
+
+~~~text
+Leaf-green layered armor plates, pale-green joints, subtle leaf-vein engraving. Draw only one limb specified below, including its joint connector, never the other three limbs. No head, torso or ornament. Keep a 12-20px overlap tab at its attachment root. Match the opposite limb in material, colors, length, thickness, cuff and hand/foot shape; only mirror its lateral contour. No different glove, pose, shoe, side view or perspective.
+
+Character-left arm (image-right): shoulder pivot (.66,.42), hand (.75,.63), envelope x=.64-.81, y=.40-.66; relaxed downward angle, neutral mitten. No torso.
+
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
+
+#### limb_salad/arm_right.png｜右臂
+
+~~~text
+Leaf-green layered armor plates, pale-green joints, subtle leaf-vein engraving. Draw only one limb specified below, including its joint connector, never the other three limbs. No head, torso or ornament. Keep a 12-20px overlap tab at its attachment root. Match the opposite limb in material, colors, length, thickness, cuff and hand/foot shape; only mirror its lateral contour. No different glove, pose, shoe, side view or perspective.
+
+Character-right arm (image-left): shoulder pivot (.34,.42), hand (.25,.63), envelope x=.19-.36, y=.40-.66; relaxed downward angle, neutral mitten. No torso.
+
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
+
+#### limb_salad/leg_left.png｜左腿
+
+~~~text
+Leaf-green layered armor plates, pale-green joints, subtle leaf-vein engraving. Draw only one limb specified below, including its joint connector, never the other three limbs. No head, torso or ornament. Keep a 12-20px overlap tab at its attachment root. Match the opposite limb in material, colors, length, thickness, cuff and hand/foot shape; only mirror its lateral contour. No different glove, pose, shoe, side view or perspective.
+
+Character-left leg (image-right): hip pivot (.59,.64), sole y=.91, envelope x=.53-.68, y=.62-.92; front-facing stable stance. No pelvis.
+
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
+
+#### limb_salad/leg_right.png｜右腿
+
+~~~text
+Leaf-green layered armor plates, pale-green joints, subtle leaf-vein engraving. Draw only one limb specified below, including its joint connector, never the other three limbs. No head, torso or ornament. Keep a 12-20px overlap tab at its attachment root. Match the opposite limb in material, colors, length, thickness, cuff and hand/foot shape; only mirror its lateral contour. No different glove, pose, shoe, side view or perspective.
+
+Character-right leg (image-left): hip pivot (.41,.64), sole y=.91, envelope x=.32-.47, y=.62-.92; front-facing stable stance. No pelvis.
+
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
+
+## 三、饮料：5 个头部
+
+### 13. head_zero_bubble｜零度可乐头部
+
+~~~text
+A rounded black-and-silver toy head with embossed bubble motifs, friendly eyes and a small smiling mouth. One complete head with eyes, mouth and short neck connector; no torso, limbs or decorations. Head envelope x=.35-.65, y=.14-.35; neck connector ends at (.50,.34); top decoration reference is (.50,.13). Keep the face upright and readable.
+
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
+
+### 14. head_cola_spark｜可口可乐头部
+
+~~~text
+A red-brown rounded toy head with amber highlights, subtle bubble engravings, friendly eyes and a small smiling mouth. One complete head with eyes, mouth and short neck connector; no torso, limbs or decorations. Head envelope x=.35-.65, y=.14-.35; neck connector ends at (.50,.34); top decoration reference is (.50,.13). Keep the face upright and readable.
+
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
+
+### 15. head_sprite_mist｜雪碧头部
+
+~~~text
+A mint-and-cyan toy head with translucent-looking surface panels, friendly eyes and a small smiling mouth. Keep its interior visually solid enough to read clearly. One complete head with eyes, mouth and short neck connector; no torso, limbs or decorations. Head envelope x=.35-.65, y=.14-.35; neck connector ends at (.50,.34); top decoration reference is (.50,.13). Keep the face upright and readable.
+
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
+
+### 16. head_orange_sun｜橙汁头部
+
+~~~text
+An orange-gold round toy head with restrained sun-ray engraving, friendly eyes and a small smiling mouth. One complete head with eyes, mouth and short neck connector; no torso, limbs or decorations. Head envelope x=.35-.65, y=.14-.35; neck connector ends at (.50,.34); top decoration reference is (.50,.13). Keep the face upright and readable.
+
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
+
+### 17. head_coffee_clock｜咖啡头部
+
+~~~text
+A coffee-brown and cream toy head with a subtle clock-dial-inspired face frame, friendly eyes and a small smiling mouth. No hands, numerals or letters on the dial. One complete head with eyes, mouth and short neck connector; no torso, limbs or decorations. Head envelope x=.35-.65, y=.14-.35; neck connector ends at (.50,.34); top decoration reference is (.50,.13). Keep the face upright and readable.
+
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
+
+## 四、甜品：4 个装饰
+
+### 18. deco_mcflurry_wings｜麦旋风翅膀
+
+~~~text
+One connected pair of small cream-swirl ornamental wings, joined by a narrow rear mounting bridge. Smooth opaque sculpted surfaces, subtle chocolate flecks. A decorative wearable, no character, no face. Back-slot pivot (.50,.43), envelope x=.18-.82, y=.29-.77. This layer sits behind the torso and limbs. Show only the decoration; leave any imagined wearer fully transparent.
+
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
+
+### 19. deco_pie_cap｜派帽子
+
+~~~text
+One small golden pastry-textured cap with a subtle lattice top and a clean empty underside mounting rim. No face, head or real pastry prop. Head-top-slot pivot (.50,.13), envelope x=.32-.68, y=.05-.18. This layer sits above the head without covering the eyes. Show only the decoration; leave any imagined wearer fully transparent.
+
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
+
+### 20. deco_sundae_halo｜圣代光环
+
+~~~text
+One cream-and-caramel ornamental oval halo, solid sculpted rim, open transparent center. No outer glow, support stand, face or head. Head-top-slot pivot (.50,.13), envelope x=.32-.68, y=.05-.18. This layer sits above the head without covering the eyes. Show only the decoration; leave any imagined wearer fully transparent.
+
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
+
+### 21. deco_icecream_cape｜冰淇淋披风
+
+~~~text
+One cream-colored wearable cape with softly scalloped melting-inspired edges and a narrow upper mounting bridge. A smooth sculpted fabric-like ornament, not liquid, no head or clasp drawn on a body. Back-slot pivot (.50,.43), envelope x=.18-.82, y=.29-.77. This layer sits behind the torso and limbs. Show only the decoration; leave any imagined wearer fully transparent.
+
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
+
+## 五、中性基础部件：额外 6 张
+
+缺少对应餐品时只使用无餐品特征的中性图。只有小食/饮料的订单使用中性身体占位。它们不增加餐品风格数量，也不表示用户点了额外餐品。
+
+### defaults/body_neutral.png
+
+~~~text
+A simple warm-gray and ivory toy torso shell with smooth unmarked panels, no food motifs. Draw only a headless and limbless chest-abdomen-pelvis frame. No face, neck above the socket, arms, hands, legs, feet or decorations. Body envelope x=.32-.68, y=.34-.66. Neck socket at (.50,.34), character-left shoulder at (.66,.42), character-right shoulder at (.34,.42), character-left hip at (.59,.64), character-right hip at (.41,.64). Small joint-cover lips may overlap connections; do not extend them into limbs. Match all front-v1 sockets.
+
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
+
+### defaults/head_neutral.png
+
+~~~text
+A simple warm-gray and ivory rounded toy head, friendly eyes and a small smiling mouth, no food or beverage motifs. One complete head with eyes, mouth and short neck connector; no torso, limbs or decorations. Head envelope x=.35-.65, y=.14-.35; neck connector ends at (.50,.34); top decoration reference is (.50,.13). Keep the face upright and readable.
+
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
+
+### defaults/arm_left.png｜中性左臂
+
+~~~text
+A simple warm-gray and ivory toy limb with smooth unmarked panels, no food motifs. Only the specified limb with hand/foot and smooth joint connector; no other parts. Keep a 12-20px root overlap.
+
+Character-left arm (image-right): shoulder pivot (.66,.42), hand (.75,.63), envelope x=.64-.81, y=.40-.66; relaxed downward angle, neutral mitten. No torso.
+
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
+
+### defaults/arm_right.png｜中性右臂
+
+~~~text
+A simple warm-gray and ivory toy limb with smooth unmarked panels, no food motifs. Only the specified limb with hand/foot and smooth joint connector; no other parts. Keep a 12-20px root overlap.
+
+Character-right arm (image-left): shoulder pivot (.34,.42), hand (.25,.63), envelope x=.19-.36, y=.40-.66; relaxed downward angle, neutral mitten. No torso.
+
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
+
+### defaults/leg_left.png｜中性左腿
+
+~~~text
+A simple warm-gray and ivory toy limb with smooth unmarked panels, no food motifs. Only the specified limb with hand/foot and smooth joint connector; no other parts. Keep a 12-20px root overlap.
+
+Character-left leg (image-right): hip pivot (.59,.64), sole y=.91, envelope x=.53-.68, y=.62-.92; front-facing stable stance. No pelvis.
+
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
+
+### defaults/leg_right.png｜中性右腿
+
+~~~text
+A simple warm-gray and ivory toy limb with smooth unmarked panels, no food motifs. Only the specified limb with hand/foot and smooth joint connector; no other parts. Keep a 12-20px root overlap.
+
+Character-right leg (image-left): hip pivot (.41,.64), sole y=.91, envelope x=.32-.47, y=.62-.92; front-facing stable stance. No pelvis.
+
+Negative: full figure, photo, cup, weapon, shield, backpack, creature, duplicates, merged parts, perspective, crop, labels, background, shadow, text.
+~~~
+
+## 拼接与动画验收
+
+先验证 6 张中性图可以在同一画布直接叠加，再替换餐品部件。叠图顺序：背部装饰 → 双腿 → 双臂 → 身体 → 头部 → 头顶装饰 → 程序特效。具体挂点与小队分配以《McMoment_订单DNA概念.md》为准。
+
+检查透明边缘、接口遮挡余量、手脚比例与头部大小；随机试拼至少三组跨风格组合，确认帽子不遮脸、翅膀不盖住身体。所有图片保持相同光照与正面视角，不单独翻转某个部件来凑左右。
+
+按钮下方的角色在点击后生成，跟随 5 秒进度移动；完成时程序让整个人物轻跳、一侧手臂向外挥动、装饰轻摆。图片里不预画运动轨迹、庆祝星光、托盘或举杯。四肢是一段刚性图层，不要求肘膝弯曲。
+
+本文件提供制作提示词，尚未产出实际 PNG；导入资源与运行时组装需在图片生成验收后接入。
