@@ -3,6 +3,7 @@ import https from "node:https";
 import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { classifyFood } from "../web/food-categories.js";
 
 const SERVER_URL = "https://mcp.mcd.cn";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -156,11 +157,12 @@ function parseNutritionRows(data) {
 }
 
 function buildMealCombos(products, people, calorieLimit, preferences = "", recommendationCount = 3) {
-  const drinkPattern = /可乐|雪碧|怡泉|咖啡|茶|牛奶|豆浆|果汁|饮料|柠檬|美式|拿铁|奶铁|燕麦奶|抹茶牛奶/;
-  const sidePattern = /薯条|薯饼|玉米杯|麦乐鸡|鸡翅|鸡块|派|鸡球|苹果片|沙拉|脆汁鸡|V翅/;
-  const mains = products.filter((item) => item.productName && !drinkPattern.test(item.productName) && !sidePattern.test(item.productName));
-  const sides = products.filter((item) => item.productName && sidePattern.test(item.productName));
-  const drinks = products.filter((item) => item.productName && drinkPattern.test(item.productName));
+  const categories = { main: [], side: [], drink: [] };
+  for (const product of products) {
+    const category = classifyFood(product.productName);
+    if (categories[category]) categories[category].push(product);
+  }
+  const { main: mains, side: sides, drink: drinks } = categories;
   const combos = [];
   const preferenceText = String(preferences).toLocaleLowerCase();
   const preferenceTerms = [
