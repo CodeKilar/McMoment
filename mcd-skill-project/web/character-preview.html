@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>订单形象拼接检查</title>
+<style>
+*{box-sizing:border-box}body{margin:0;padding:24px;font:14px system-ui;background:#f3f0e9;color:#29251f}h1{font-size:24px;margin:0 0 8px}p{color:#756e61}nav{display:flex;gap:12px;margin:20px 0}a,button{color:inherit;background:#fff;border:1px solid #ddd3bd;border-radius:8px;padding:10px;text-decoration:none}#grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:12px}article{background:#fffaf0;border:1px solid #e9dfc9;border-radius:12px;padding:8px;text-align:center}.character{position:relative;aspect-ratio:1;isolation:isolate}.character-layer{position:absolute;display:block;pointer-events:none}.character-back{z-index:1}.character-body{z-index:2}.character-head{z-index:3}.character-collar{z-index:4}.character-deco{z-index:5}.character-hdeco{z-index:6}small{display:block;font-size:10px;overflow-wrap:anywhere}#status{margin:16px 0}#controls{display:flex;gap:12px;flex-wrap:wrap}select{padding:6px;max-width:240px}body.single #grid{grid-template-columns:minmax(240px,600px)}@media(max-width:700px){#grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+</style></head><body><h1>订单形象拼接检查</h1><p>使用订单弹窗相同的渲染器，核对颈口、帽檐、眼镜、光环和背饰。身体素材已经包含四肢。</p><nav><a href="?mode=single">单个组合</a><a href="?mode=bodies">全部头身组合</a><a href="?mode=accessories">全部装饰适配</a></nav><div id="controls"></div><div id="status">正在加载…</div><div id="grid"></div>
+<script type="module">
+import {renderCharacter} from './character-renderer.js';
+const defaults={body:'defaults_body_neutral.png',head:'defaults_head_neutral.png'};
+const mode=new URLSearchParams(location.search).get('mode')||'single';
+const grid=document.querySelector('#grid'),status=document.querySelector('#status');
+try{
+const {assets}=await (await fetch('/api/character-assets')).json();
+const list=type=>assets.filter(file=>(file.startsWith(type+'_')||file===defaults[type])&&!file.endsWith('_alpha.png'));
+const bodies=list('body'),heads=list('head'),decorations=[...list('deco'),...list('hdeco')];
+async function card(chosen){const article=document.createElement('article'),container=document.createElement('div');container.className='character';article.append(container);for(const file of Object.values(chosen).filter(Boolean)){const caption=document.createElement('small');caption.textContent=file;article.append(caption)}grid.append(article);const result=await renderCharacter(container,chosen,{assetBase:'/assets/character/',defaults});if(result.omitted.length)throw new Error(result.omitted.join(','));}
+if(mode==='single'){
+document.body.classList.add('single');const chosen={...defaults};
+for(const type of ['body','head','deco','hdeco']){const label=document.createElement('label');label.textContent={body:'身体 ',head:'头部 ',deco:'饮品装饰 ',hdeco:'甜品装饰 '}[type];const select=document.createElement('select');for(const file of [...(!defaults[type]?['']:[]),...list(type)]){const option=document.createElement('option');option.value=file;option.textContent=file||'无';option.selected=file===chosen[type];select.append(option)}select.addEventListener('change',async()=>{chosen[type]=select.value;grid.replaceChildren();try{await card(chosen);status.textContent='组合已更新'}catch(error){status.textContent=error.message}});label.append(select);document.querySelector('#controls').append(label)}await card(chosen);
+}else{for(const head of heads)for(const file of mode==='bodies'?bodies:decorations){await card({body:mode==='bodies'?file:'body_grilled_rider.png',head,...(mode==='bodies'?{}:{[file.startsWith('hdeco')?'hdeco':'deco']:file})})}}
+status.textContent=`已渲染 ${grid.children.length} 个组合`;
+}catch(error){status.textContent='检查失败：'+error.message;console.error(error)}
+</script></body></html>

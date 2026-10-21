@@ -8,6 +8,7 @@ const SERVER_URL = "https://mcp.mcd.cn";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const LOG_PATH = path.resolve(__dirname, "../logs/mcp-requests.jsonl");
 const WEB_ROOT = path.resolve(__dirname, "../web");
+const CHARACTER_ASSET_ROOT = path.resolve(__dirname, "../../png");
 
 function redact(value) {
   if (Array.isArray(value)) return value.map(redact);
@@ -154,31 +155,65 @@ function parseNutritionRows(data) {
   });
 }
 
-function buildMealCombos(products, people, calorieLimit) {
+function buildMealCombos(products, people, calorieLimit, preferences = "", recommendationCount = 3) {
   const drinkPattern = /可乐|雪碧|怡泉|咖啡|茶|牛奶|豆浆|果汁|饮料|柠檬|美式|拿铁|奶铁|燕麦奶|抹茶牛奶/;
   const sidePattern = /薯条|薯饼|玉米杯|麦乐鸡|鸡翅|鸡块|派|鸡球|苹果片|沙拉|脆汁鸡|V翅/;
   const mains = products.filter((item) => item.productName && !drinkPattern.test(item.productName) && !sidePattern.test(item.productName));
   const sides = products.filter((item) => item.productName && sidePattern.test(item.productName));
   const drinks = products.filter((item) => item.productName && drinkPattern.test(item.productName));
   const combos = [];
-  for (const main of mains.slice(0, 80)) {
-    for (const side of sides.slice(0, 40)) {
-      for (const drink of drinks.slice(0, 30)) {
+  const preferenceText = String(preferences).toLocaleLowerCase();
+  const preferenceTerms = [
+    [/[辣麻辣香辣辣味]/, /辣|麻辣|香辣|麦辣/],
+    [/牛肉|牛堡|厚牛/, /牛肉|牛堡|厚牛|安格斯/],
+    [/鸡肉|鸡腿|鸡翅|鸡块|鸡/, /鸡|麦乐鸡/],
+    [/鱼|麦香鱼/, /鱼|鳕鱼/],
+    [/素食|蔬菜|清淡|沙拉/, /玉米|沙拉|苹果|蔬菜/],
+    [/咖啡|美式|拿铁/, /咖啡|美式|拿铁/],
+    [/无糖|零糖|不加糖/, /无糖|零糖|不加糖/]
+  ];
+  const matchedPreferences = preferenceTerms.filter(([requestPattern]) => requestPattern.test(preferenceText));
+  const preferenceScore = (items) => {
+    const text = items.map((item) => item.productName).join(" ").toLocaleLowerCase();
+    return matchedPreferences.reduce((score, [, foodPattern]) => score + (foodPattern.test(text) ? 1 : 0), 0);
+  };
+  for (const main of mains) {
+    for (const side of sides) {
+      for (const drink of drinks) {
         const items = [main, side, drink];
         const energyKcal = items.reduce((sum, item) => sum + (Number(item.energyKcal) || 0), 0);
         if (calorieLimit && energyKcal * people > calorieLimit) continue;
         combos.push({
-          productName: `${main.productName} + ${side.productName} + ${drink.productName}`,
+          productName: items.map((item) => item.productName).join(" + "),
           items: items.map((item) => item.productName),
           energyKcal,
           protein: items.reduce((sum, item) => sum + (Number(item.protein) || 0), 0),
-          totalEnergyKcal: energyKcal * people
+          totalEnergyKcal: energyKcal * people,
+          preferenceScore: preferenceScore(items),
+          varietyKey: items.map((item) => item.productName).join("|")
         });
-        if (combos.length >= 300) return combos;
       }
     }
   }
-  return combos;
+  // Collapse duplicate source rows and randomize only within the same preference score,
+  // so explicit preferences stay relevant while the source list order has no bias.
+  const uniqueCombos = [...new Map(combos.map((combo) => [combo.varietyKey, combo])).values()];
+  const scoreGroups = new Map();
+  for (const combo of uniqueCombos) {
+    if (!scoreGroups.has(combo.preferenceScore)) scoreGroups.set(combo.preferenceScore, []);
+    scoreGroups.get(combo.preferenceScore).push(combo);
+  }
+  const rankedScores = [...scoreGroups.keys()].sort((left, right) => right - left);
+  const randomized = [];
+  for (const score of rankedScores) {
+    const group = scoreGroups.get(score);
+    for (let index = group.length - 1; index > 0; index -= 1) {
+      const swapIndex = Math.floor(Math.random() * (index + 1));
+      [group[index], group[swapIndex]] = [group[swapIndex], group[index]];
+    }
+    randomized.push(...group);
+  }
+  return randomized.slice(0, Math.max(1, recommendationCount)).map(({ preferenceScore: _score, varietyKey: _key, ...combo }) => combo);
 }
 
 function validateArguments(tool, args) {
@@ -228,13 +263,14 @@ async function handleRecommendation(request, response, context) {
   const calorieLimit = Number(input.calories) > 0 ? Number(input.calories) : null;
   const called = await callTool(context.token, context.sessionId, context.tools, toolName, args);
   const products = parseNutritionRows(called.result?.data);
-  const recommendations = buildMealCombos(products, people, calorieLimit);
+  const recommendationCount = input.distinctMeals ? people : 3;
+  const recommendations = buildMealCombos(products, people, calorieLimit, userText, recommendationCount);
   writeLog({ direction: "routing", intent, userInput: redact(input), selectedTool: toolName, arguments: args });
   sendJson(response, 200, {
     status: "completed", intent, tool: called.tool, arguments: called.arguments,
     filters: { people, budget, calorieLimit },
     budgetNote: budget ? "MCP 当前营养数据不包含价格，无法验证预算；未将餐品标记为预算内。" : undefined,
-    recommendationNote: "套餐由 MCP 营养数据中的主食、小食和饮品组合而成，非真实订单。",
+    recommendationNote: "餐品组合基于 MCP 营养数据，并按用户偏好筛选、随机抽取；非真实订单。",
     recommendations,
     result: called.result
   });
@@ -259,6 +295,32 @@ async function main() {
   const server = http.createServer(async (request, response) => {
     try {
       const pathname = new URL(request.url, "http://localhost").pathname;
+      if (pathname === "/api/character-assets" && request.method === "GET") {
+        const origin = request.headers.origin;
+        const allowedOrigins = new Set(["null", `http://127.0.0.1:${port}`, `http://localhost:${port}`]);
+        if (origin && !allowedOrigins.has(origin)) { sendJson(response, 403, { error: "Origin not allowed" }); return; }
+        if (origin) { response.setHeader("Access-Control-Allow-Origin", origin); response.setHeader("Vary", "Origin"); }
+        const assets = fs.existsSync(CHARACTER_ASSET_ROOT)
+          ? fs.readdirSync(CHARACTER_ASSET_ROOT, { withFileTypes: true })
+            .filter((entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".png"))
+            .map((entry) => entry.name)
+            .sort((left, right) => left.localeCompare(right, "zh-CN"))
+          : [];
+        sendJson(response, 200, { assets });
+        return;
+      }
+      if (pathname.startsWith("/assets/character/") && (request.method === "GET" || request.method === "HEAD")) {
+        let fileName;
+        try { fileName = decodeURIComponent(pathname.slice("/assets/character/".length)); }
+        catch { response.writeHead(400); response.end("Bad request"); return; }
+        const target = path.resolve(CHARACTER_ASSET_ROOT, fileName);
+        if (path.basename(fileName) !== fileName || path.extname(fileName).toLowerCase() !== ".png" || !fs.existsSync(target) || !fs.statSync(target).isFile()) {
+          response.writeHead(404); response.end("Not found"); return;
+        }
+        response.writeHead(200, { "Content-Type": "image/png", "Cache-Control": "no-cache" });
+        if (request.method === "HEAD") response.end(); else fs.createReadStream(target).pipe(response);
+        return;
+      }
       if (pathname === "/api/recommend") {
         const origin = request.headers.origin;
         const allowedOrigins = new Set(["null", `http://127.0.0.1:${port}`, `http://localhost:${port}`]);
