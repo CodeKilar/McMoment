@@ -4,7 +4,7 @@
 >
 > McMoment 是一个基于麦当劳 MCP 的情境感知型用餐助手：用户只需要说出此刻的状态、人数、预算或饮食偏好，系统就能从真实营养数据中组合出一份适合当前场景的餐食方案，并把这份订单进一步“长”成一个独一无二的订单形象。
 
-![McMoment 订单形象拼接效果](mcd-skill-project/artifacts/final-character-combination.png)
+![McMoment 订单形象最终拼接效果](mcd-skill-project/artifacts/order-character-final.png)
 
 ## 参赛简介
 
